@@ -264,15 +264,13 @@
                             <label class="form-label">
                                 <i class="bi bi-calendar-plus me-1"></i>Check-in
                             </label>
-                            <input type="date" class="form-control" id="checkin" name="checkin" 
-                                   min="{{ today }}" value="{{ today }}" required>
+                            <input type="date" class="form-control" id="checkin" name="checkin" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
                                 <i class="bi bi-calendar-minus me-1"></i>Check-out
                             </label>
-                            <input type="date" class="form-control" id="checkout" name="checkout" 
-                                   min="{{ tomorrow }}" value="{{ tomorrow }}" required>
+                            <input type="date" class="form-control" id="checkout" name="checkout" required>
                         </div>
                     </div>
                     
@@ -373,6 +371,24 @@
     </div>
     
     <script>
+        // Configurar datas mínimas
+        function setMinDates() {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const todayStr = today.toISOString().split('T')[0];
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            
+            document.getElementById('checkin').min = todayStr;
+            document.getElementById('checkin').value = todayStr;
+            document.getElementById('checkout').min = tomorrowStr;
+            document.getElementById('checkout').value = tomorrowStr;
+        }
+        
+        // Chamar no carregamento
+        setMinDates();
+
         function showToast(message) {
             const toast = document.getElementById('toast');
             document.getElementById('toastMessage').textContent = message;
@@ -449,12 +465,23 @@
             document.getElementById('results').style.display = 'none';
             
             // Coletar dados do formulário
-            const formData = new FormData(e.target);
+            const formData = {
+                checkin: checkinStr,
+                checkout: checkoutStr,
+                adultos: parseInt(document.getElementById('adultos').value),
+                criancas: parseInt(document.getElementById('criancas').value),
+                bebes: parseInt(document.getElementById('bebes').value),
+                pets: parseInt(document.getElementById('pets').value),
+                desconto: parseFloat(document.getElementById('desconto').value)
+            };
             
             try {
-                const response = await fetch('/consultar', {
+                const response = await fetch('/api/consultar', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
                 });
                 
                 const data = await response.json();
@@ -476,7 +503,7 @@
                 document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
                 
             } catch (error) {
-                alert('Erro ao consultar: ' + error);
+                alert('Erro ao consultar: ' + error.message);
                 document.getElementById('loading').style.display = 'none';
             }
         });
@@ -485,10 +512,10 @@
             const resultsContent = document.getElementById('resultsContent');
             const whatsappMessage = document.getElementById('whatsappMessage');
             
-            // Gerar HTML dos resultados - MOSTRA TODOS OS QUARTOS
+            // Gerar HTML dos resultados
             let html = '';
             
-            data.all_suites.forEach(suite => {
+            data.allSuites.forEach(suite => {
                 // Determinar a badge baseada na disponibilidade
                 let badgeHtml = '';
                 if (suite.available && suite.price > 0) {
@@ -499,7 +526,7 @@
                 
                 // Determinar o preço a mostrar
                 const precoOriginal = suite.price > 0 ? suite.price : 0;
-                const precoDesconto = suite.price_with_discount > 0 ? suite.price_with_discount : 0;
+                const precoDesconto = suite.priceWithDiscount > 0 ? suite.priceWithDiscount : 0;
                 
                 // Construir notas adicionais
                 let notas = '';
@@ -509,7 +536,7 @@
                 if (suite.reason && !suite.available) {
                     notas += `<div class="price-note mb-2"><i class="bi bi-exclamation-triangle me-1"></i>${suite.reason}</div>`;
                 }
-                if (suite.capacidade_excedida) {
+                if (suite.capacidadeExcedida) {
                     notas += `<div class="price-note mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Capacidade máxima excedida para o número de hóspedes</div>`;
                 }
                 
@@ -521,8 +548,8 @@
                         ${notas}
                         <div class="row align-items-end">
                             <div class="col-md-6">
-                                <div class="price-original">De: R$ ${precoOriginal.toFixed(2)}</div>
-                                <div class="price-discount">Por: R$ ${precoDesconto.toFixed(2)}</div>
+                                <div class="price-original">De: R$ ${precoOriginal.toFixed(2).replace('.', ',')}</div>
+                                <div class="price-discount">Por: R$ ${precoDesconto.toFixed(2).replace('.', ',')}</div>
                             </div>
                             <div class="col-md-6 text-md-end mt-3 mt-md-0">
                                 <a href="${suite.url}" target="_blank" class="btn btn-outline-primary">
@@ -537,7 +564,7 @@
             resultsContent.innerHTML = html;
             
             // Mostrar mensagem WhatsApp
-            whatsappMessage.textContent = data.whatsapp_message;
+            whatsappMessage.textContent = data.whatsappMessage;
         }
         
         // Validação automática de datas
@@ -571,10 +598,11 @@
         
         // Validação inicial ao carregar a página
         window.addEventListener('load', function() {
+            setMinDates();
             const checkin = new Date(document.getElementById('checkin').value + 'T00:00:00');
             const dayOfWeek = checkin.getDay();
             
-            if (dayOfWeek === 5 || dayOfWeek === 6) {
+            if ((dayOfWeek === 5 || dayOfWeek === 6) && nights < 2) {
                 const newCheckout = new Date(checkin);
                 newCheckout.setDate(newCheckout.getDate() + 2);
                 document.getElementById('checkout').value = newCheckout.toISOString().split('T')[0];
