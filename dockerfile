@@ -6,20 +6,14 @@ WORKDIR /app
 COPY server/package*.json ./server/
 RUN cd server && npm install
 
+# Copiar código do servidor
 COPY server/ ./server/
 
-# Copiar arquivos do cliente
-COPY client/package*.json ./client/
-RUN cd client && npm install
+# Copiar arquivos estáticos do frontend
+COPY public/ ./public/
 
-COPY client/ ./client/
-
-# Build do cliente com caminho corrigido
-WORKDIR /app/client
-RUN npm run build
-
-# Mover os arquivos do build para o servidor servir
-RUN mkdir -p /app/server/public && cp -r dist/* /app/server/public/
+# Instalar navegador do Playwright
+RUN cd server && npx playwright install chromium
 
 WORKDIR /app/server
 
