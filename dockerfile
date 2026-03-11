@@ -8,15 +8,18 @@ RUN cd server && npm install
 
 COPY server/ ./server/
 
-# Construir o cliente
+# Copiar arquivos do cliente
 COPY client/package*.json ./client/
 RUN cd client && npm install
 
 COPY client/ ./client/
-RUN cd client && npm run build
+
+# Build do cliente com caminho corrigido
+WORKDIR /app/client
+RUN npm run build
 
 # Mover os arquivos do build para o servidor servir
-RUN cp -r client/dist server/public
+RUN mkdir -p /app/server/public && cp -r dist/* /app/server/public/
 
 WORKDIR /app/server
 
