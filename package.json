@@ -2,13 +2,7 @@
   "name": "pousada-pms-js",
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "cd server && npm run dev",
-    "client": "cd client && npm run dev",
-    "build": "cd client && npm run build",
-    "start": "cd server && npm start"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.0"
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev"
   }
 }
