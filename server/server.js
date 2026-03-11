@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { consultarAirbnb } from './scraper.js';
+import { consultarAirbnbAPI } from './airbnbApi.js'; // Mudou para a nova função
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,10 +18,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir arquivos estáticos da pasta public
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Rota principal - serve o index.html
+// Rota principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
@@ -47,12 +47,9 @@ const ROOMS = {
 
 // Função para validar mínimo de noites
 function validarMinimoNoites(checkinDate, noites) {
-    const diaSemana = checkinDate.getDay(); // 0=domingo, 5=sexta, 6=sábado
-    
-    if (diaSemana === 5 || diaSemana === 6) { // Sexta ou sábado
-        if (noites < 2) {
-            return false;
-        }
+    const diaSemana = checkinDate.getDay();
+    if (diaSemana === 5 || diaSemana === 6) {
+        if (noites < 2) return false;
     }
     return true;
 }
@@ -62,7 +59,6 @@ app.post('/api/consultar', async (req, res) => {
     try {
         const { checkin, checkout, adultos, criancas = 0, bebes = 0, pets = 0, desconto = 12 } = req.body;
         
-        // Validar datas
         const checkinDate = new Date(checkin + 'T00:00:00');
         const checkoutDate = new Date(checkout + 'T00:00:00');
         const noites = Math.ceil((checkoutDate - checkinDate) / (1000 * 60 * 60 * 24));
@@ -83,21 +79,18 @@ app.post('/api/consultar', async (req, res) => {
         console.log(`Consultando Airbnb para ${checkin} até ${checkout}`);
         console.log(`${'='.repeat(50)}`);
         
-        // Consultar Airbnb
-        const results = await consultarAirbnb(checkin, checkout, adultos, criancas, bebes, pets);
+        // Usar a nova função de API
+        const results = await consultarAirbnbAPI(checkin, checkout, adultos, criancas, bebes, pets);
         
-        // Processar resultados
         const allSuites = [];
         const pricesWithDiscount = {};
         
         for (const [roomId, data] of Object.entries(results)) {
             const roomInfo = ROOMS[roomId];
             
-            // Verificar capacidade
             const totalHospedes = adultos + criancas;
             const capacidadeExcedida = totalHospedes > roomInfo.max_guests;
             
-            // Calcular preço com desconto
             let precoComDesconto = 0;
             if (data.available && data.price > 0) {
                 precoComDesconto = data.price * (1 - desconto / 100);
@@ -118,7 +111,6 @@ app.post('/api/consultar', async (req, res) => {
             });
         }
         
-        // Gerar mensagem WhatsApp
         const mensagem = gerarMensagemWhatsApp(
             checkin, checkout, adultos, criancas, bebes, pets, noites,
             results, pricesWithDiscount, desconto
@@ -139,14 +131,12 @@ app.post('/api/consultar', async (req, res) => {
     }
 });
 
-// Função para gerar mensagem WhatsApp
+// Função para gerar mensagem WhatsApp (mesma de antes)
 function gerarMensagemWhatsApp(checkin, checkout, adultos, criancas, bebes, pets, noites, results, pricesWithDiscount, desconto) {
-    const checkinDate = new Date(checkin + 'T00:00:00');
-    const checkoutDate = new Date(checkout + 'T00:00:00');
-    
     const checkinFmt = checkin.split('-').reverse().join('/');
     const checkoutFmt = checkout.split('-').reverse().join('/');
     
+    const checkinDate = new Date(checkin + 'T00:00:00');
     const diaSemana = checkinDate.getDay();
     const isWeekend = diaSemana === 5 || diaSemana === 6;
     
@@ -224,7 +214,6 @@ Equipe Pousada dos Sonhos ✨`;
     return mensagem;
 }
 
-// Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Servidor rodando na porta ${PORT}`);
     console.log(`🌐 Acesse: http://localhost:${PORT}`);
